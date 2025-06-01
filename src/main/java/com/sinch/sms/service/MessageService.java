@@ -8,6 +8,4 @@ public interface MessageService {
     MessageResponseVo sendMessage(MessageRequestDto request);
 
     MessageResponseVo getMessageStatus(String id);
-
-    void optOut(String phoneNumber);
 }

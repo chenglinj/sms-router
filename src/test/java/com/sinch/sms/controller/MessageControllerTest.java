@@ -31,7 +31,7 @@ class MessageControllerTest {
 
     @BeforeEach
     void setup() {
-        objectMapper = new ObjectMapper();
+        this.objectMapper = new ObjectMapper();
     }
 
     @Test
@@ -59,15 +59,6 @@ class MessageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DELIVERED"))
                 .andExpect(jsonPath("$.carrier").value("Telstra"));
-    }
-
-    @Test
-    void testOptOutReturnsConfirmation() throws Exception {
-        mockMvc.perform(post("/messages/optout/+61400000000"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Phone number +61400000000 has been opted out."));
-
-        verify(messageService, times(1)).optOut("+61400000000");
     }
 
     @Test

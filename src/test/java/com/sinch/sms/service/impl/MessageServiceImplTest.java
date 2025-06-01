@@ -17,14 +17,16 @@ import static org.junit.jupiter.api.Assertions.*;
 class MessageServiceImplTest {
 
     private MessageServiceImpl messageService;
+    private OptOutServiceImpl optOutService;
     private MessageInMemoryRepository messageInMemoryRepository;
 
     @BeforeEach
     void setup() {
         MessageInMemoryRepository messageRepository = new MessageInMemoryRepository();
         OptOutInMemoryRepository optOutRepository = new OptOutInMemoryRepository();
-        messageService = new MessageServiceImpl(messageRepository, optOutRepository);
-        messageInMemoryRepository = messageRepository;
+        this.optOutService = new OptOutServiceImpl(optOutRepository);
+        this.messageService = new MessageServiceImpl(optOutService, messageRepository);
+        this.messageInMemoryRepository = messageRepository;
     }
 
     @Test
@@ -39,7 +41,7 @@ class MessageServiceImplTest {
 
     @Test
     void testSendToNewZealandNumber() {
-        MessageRequestDto request = new MessageRequestDto("+6421000000", "World hello", MessageFormat.SMS.getCode());
+        MessageRequestDto request = new MessageRequestDto("+64210000000", "World hello", MessageFormat.SMS.getCode());
         MessageResponseVo response = messageService.sendMessage(request);
 
         assertNotNull(response.getId());
@@ -49,7 +51,7 @@ class MessageServiceImplTest {
     @Test
     void testSendToOptedOutNumberIsBlocked() {
         String phoneNumber = "+61400000001";
-        messageService.optOut(phoneNumber);
+        optOutService.optOut(phoneNumber);
 
         MessageRequestDto request = new MessageRequestDto(phoneNumber, "Blocked test", MessageFormat.SMS.getCode());
         MessageResponseVo response = messageService.sendMessage(request);

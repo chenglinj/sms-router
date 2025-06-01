@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
 public class OptOutInMemoryRepository implements OptOutRepository {
+
     private final Set<String> optOutNumberSet = ConcurrentHashMap.newKeySet();
 
     @Override
@@ -18,5 +19,10 @@ public class OptOutInMemoryRepository implements OptOutRepository {
     @Override
     public boolean exists(String phoneNumber) {
         return optOutNumberSet.contains(phoneNumber);
+    }
+
+    @Override
+    public void delete(String phoneNumber) {
+        optOutNumberSet.remove(phoneNumber);
     }
 }

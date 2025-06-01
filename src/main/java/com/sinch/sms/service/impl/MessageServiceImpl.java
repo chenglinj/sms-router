@@ -10,6 +10,8 @@ import com.sinch.sms.model.vo.MessageResponseVo;
 import com.sinch.sms.repository.MessageRepository;
 import com.sinch.sms.repository.OptOutRepository;
 import com.sinch.sms.service.MessageService;
+import com.sinch.sms.service.OptOutService;
+import com.sinch.sms.util.ValidationUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,18 +30,18 @@ public class MessageServiceImpl implements MessageService {
     private static final Duration STATUS_DELAY = Duration.ofSeconds(10);
 
     private final AtomicInteger auCounter = new AtomicInteger(0);
+    private final OptOutService optOutService;
     private final MessageRepository messageRepository;
-    private final OptOutRepository optOutRepository;
 
     @Autowired
-    public MessageServiceImpl(MessageRepository messageRepository, OptOutRepository optOutRepository) {
+    public MessageServiceImpl(OptOutService optOutService, MessageRepository messageRepository) {
+        this.optOutService = optOutService;
         this.messageRepository = messageRepository;
-        this.optOutRepository = optOutRepository;
     }
 
     @Override
     public MessageResponseVo sendMessage(MessageRequestDto request) {
-        validatePhoneNumber(request.getDestinationNumber());
+        ValidationUtils.validatePhoneNumber(request.getDestinationNumber());
         validateFormat(request.getFormat());
         validateContent(request.getContent());
 
@@ -71,17 +73,6 @@ public class MessageServiceImpl implements MessageService {
         return messageVo;
     }
 
-    @Override
-    public void optOut(String phoneNumber) {
-        validatePhoneNumber(phoneNumber);
-
-        if (optOutRepository.exists(phoneNumber)) {
-            throw new IllegalArgumentException(String.format("Phone number %s has already been opted out.", phoneNumber));
-        }
-
-        optOutRepository.save(phoneNumber);
-    }
-
     // Determine carrier based on routing rules
     private String determineCarrier(String phoneNumber) {
         if (phoneNumber.startsWith(SmsConstants.AU_COUNTRY_CODE)) {
@@ -93,29 +84,6 @@ public class MessageServiceImpl implements MessageService {
         } else {
             // Others
             return Carriers.GLOBAL.getCode();
-        }
-    }
-
-    private void validatePhoneNumber(String phoneNumber) {
-        if (!StringUtils.hasText(phoneNumber) || !phoneNumber.startsWith("+")) {
-            throw new IllegalArgumentException("Phone number must start with '+' and country code.");
-        }
-
-        if (phoneNumber.startsWith(SmsConstants.AU_COUNTRY_CODE)) {
-            // Australia: +61 followed by 9 digits
-            if (!phoneNumber.matches(SmsConstants.AU_NUMBER_REGEX)) {
-                throw new IllegalArgumentException("Invalid Australian phone number format. Should be +61 followed by 9 digits.");
-            }
-        } else if (phoneNumber.startsWith(SmsConstants.NZ_COUNTRY_CODE)) {
-            // New Zealand: +64 followed by 8 or 9 digits
-            if (!phoneNumber.matches(SmsConstants.NZ_NUMBER_REGEX)) {
-                throw new IllegalArgumentException("Invalid New Zealand phone number format. Should be +64 followed by 8 or 9 digits.");
-            }
-        } else {
-            // Global: must be at least 8 digits total
-            if (!phoneNumber.matches(SmsConstants.GLOBAL_NUMBER_REGEX)) {
-                throw new IllegalArgumentException("Invalid global phone number format. Should start with '+' and be at least 8 digits.");
-            }
         }
     }
 
@@ -137,17 +105,13 @@ public class MessageServiceImpl implements MessageService {
         // Considering adding other validations e.g. sensitive words...
     }
 
-    private boolean isOptedOut(String phoneNumber) {
-        return optOutRepository.exists(phoneNumber);
-    }
-
     @Scheduled(fixedRate = 5000)
     public void updateMessageStatus() {
         LocalDateTime now = LocalDateTime.now();
         for (Message message : messageRepository.findAll()) {
             if (message.getStatus() == MessageStatus.PENDING &&
                     Duration.between(message.getUpdateDate(), now).compareTo(STATUS_DELAY) >= 0) {
-                boolean isOptedOut = isOptedOut(message.getDestinationNumber());
+                boolean isOptedOut = optOutService.isOptedOut(message.getDestinationNumber());
                 message.setStatus(isOptedOut ? MessageStatus.BLOCKED : MessageStatus.SENT);
                 message.setUpdateDate(now);
             } else if (message.getStatus() == MessageStatus.SENT &&

@@ -29,12 +29,6 @@ public class MessageController {
         return ResponseEntity.ok(messageService.getMessageStatus(id));
     }
 
-    @PostMapping("/optout/{phoneNumber}")
-    public ResponseEntity<String> optOut(@PathVariable String phoneNumber) {
-        messageService.optOut(phoneNumber);
-        return ResponseEntity.ok(String.format("Phone number %s has been opted out.", phoneNumber));
-    }
-
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(e.getMessage());
