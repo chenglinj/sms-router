@@ -105,13 +105,16 @@ public class MessageServiceImpl implements MessageService {
         // Considering adding other validations e.g. sensitive words...
     }
 
+    // Update message status to simulate real SMS sending scenarios
     @Scheduled(fixedRate = 5000)
     public void updateMessageStatus() {
         LocalDateTime now = LocalDateTime.now();
         for (Message message : messageRepository.findAll()) {
+            // Update the status of a specific message for every 10 seconds
             if (message.getStatus() == MessageStatus.PENDING &&
                     Duration.between(message.getUpdateDate(), now).compareTo(STATUS_DELAY) >= 0) {
                 boolean isOptedOut = optOutService.isOptedOut(message.getDestinationNumber());
+                // Block message if the number is opted out
                 message.setStatus(isOptedOut ? MessageStatus.BLOCKED : MessageStatus.SENT);
                 message.setUpdateDate(now);
             } else if (message.getStatus() == MessageStatus.SENT &&
