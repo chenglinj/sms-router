@@ -39,4 +39,9 @@ public class MessageController {
     public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(e.getMessage());
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<String> handleAllOther(Exception e) {
+        return ResponseEntity.internalServerError().body("Internal Server Error.");
+    }
 }
